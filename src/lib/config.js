@@ -1,0 +1,1 @@
+export const logLevelConfig = {level: 'warn'};
