@@ -95,15 +95,15 @@ export class LogLevel {
   }
 
   setLevel(level) {
-    this._addConfig('level', level, `{level: '${level}', logDir: '${logLevelConfig.logDir}', ${this._str('devHost', logLevelConfig?.devHost)} ${this._str('color', logLevelConfig?.color)}}`)
+    this._addConfig('level', level, `{level: '${level}', ${this._str('logDir', logLevelConfig?.logDir)} ${this._str('devHost', logLevelConfig?.devHost)} ${this._str('color', logLevelConfig?.color)}}`)
   }
 
   setColor(color) {
-    this._addConfig('color', color, `{level: '${logLevelConfig?.level}', logDir: '${logLevelConfig.logDir}', ${this._str('devHost', logLevelConfig?.devHost)} color: '${color}'}`)
+    this._addConfig('color', color, `{level: '${logLevelConfig?.level}', ${this._str('logDir', logLevelConfig?.logDir)} ${this._str('devHost', logLevelConfig?.devHost)} color: '${color}'}`)
   }
 
   setDevHost(devHost) {
-    this._addConfig('devHost', devHost, `{level: '${logLevelConfig?.level}', logDir: '${logLevelConfig.logDir}', devHost: '${devHost}', ${this._str('color', logLevelConfig?.color)}}`)
+    this._addConfig('devHost', devHost, `{level: '${logLevelConfig?.level}', ${this._str('logDir', logLevelConfig?.logDir)} devHost: '${devHost}', ${this._str('color', logLevelConfig?.color)}}`)
   }
 
   _isLocal() {
