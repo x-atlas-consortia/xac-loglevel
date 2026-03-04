@@ -20,6 +20,7 @@
   "private": true,
   "main": "dist/index.js",
   "module": "dist/index.js",
+  "types": "./index.d.ts",
   "scripts": {
     "dev": "next dev",
     "dist": "rm -rf dist && cp src/lib/config.example.js src/lib/config.js &&  NODE_ENV=production node ./node_modules/xac-esbuild/index.js -s=src/lib/ -o=dist/ -banner=package.json -log=1  -t='**/*.{js,jsx,eot,css,svg,woff,woff2,ttf,otf}'",
