@@ -2,9 +2,21 @@
   "name": "xac-loglevel",
   "version": "1.0.0",
   "description": "Minimal lightweight simple logging for JavaScript (browsers, node.js or elsewhere). ",
+  "homepage": "https://github.com/x-atlas-consortia/xac-loglevel",
   "repository": {
-    "url": ""
+    "type": "git",
+    "url": "git@github.com:x-atlas-consortia/xac-loglevel.git"
   },
+  "bugs": {
+    "url": "https://github.com/x-atlas-consortia/xac-loglevel/issues"
+  },
+  "license": "MIT",
+  "keywords": [
+    "log",
+    "logger",
+    "logging",
+    "browser"
+  ],
   "private": true,
   "main": "dist/index.js",
   "module": "dist/index.js",
