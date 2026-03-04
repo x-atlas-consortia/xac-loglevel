@@ -2,14 +2,11 @@ import {log} from '@/lib/index';
 import { useEffect } from 'react';
 
 export default function Home() {
-  log.setConfig({color: 'green', level: 'debug'})
+  log.setConfig({color: 'green', level: 'trace'})
+  log.debug(log.getLevel(), 'hi2')
   useEffect(() => {
-    console.log(log.getLevel())
-    log.setLevel('debug')
-    console.log(log.getLevel())
-    log.setLevel('trace')
-    
-    log.trace(log.getLevel())
+    // log.setLevel('trace')
+    // log.trace(log.getLevel())
   }, [])
   return (
     <>

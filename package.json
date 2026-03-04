@@ -1,6 +1,6 @@
 {
   "name": "xac-loglevel",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Minimal lightweight simple logging for JavaScript (browsers, node.js or elsewhere). ",
   "repository": {
     "url": ""

@@ -1,7 +1,6 @@
 import path from 'path'
 import { logLevelConfig } from './config.js'
-
-const defaultLevel = 'warn'
+const fsPackage = 'node:fs/promises'
 
 const CONFIG_PATH = path.join(process.cwd(), 'node_modules/xac-loglevel/dist/config.js')
 
@@ -17,16 +16,15 @@ const levels = {
 export class LogLevel {
   
   constructor() {
-    if (this._isNode()) {
-      import('node:fs/promises').then((fs) => {
-        fs.mkdir(path.dirname(CONFIG_PATH), { recursive: true })
+    if (this.getLogDirectory() && this._isNode()) {
+      import(fsPackage).then((fs) => {
+        fs.mkdir(path.dirname(this.getLogDirectory() + 't.log'), { recursive: true })
       })
         .catch((error) => {
-          console.error("Failed to import fs module:", error);
+         this._fsErr(error);
         });
     }
   }
-
 
   _isNode() {
     return typeof process !== 'undefined' && !!process.versions && !!process.versions.node;
@@ -37,15 +35,13 @@ export class LogLevel {
   }
 
   _getConfig(key) {
-   
     if (this._isInWindow()) {
-      return window.sessionStorage.getItem(key) || global.apiConfig[key]
+      return window.sessionStorage.getItem(key) || logLevelConfig[key]
     }
 
     if (this._isNode()) {
       return logLevelConfig[key]
     }
-    
   }
 
   getLevel() {
@@ -60,34 +56,37 @@ export class LogLevel {
     return this._getConfig('color')
   }
 
+  getLogDirectory() {
+    return this._getConfig('logDir')
+  }
+
+  _fsErr(error) {
+    console.error("xac-loglevel: Failed to import fs module:", error);
+  }
  
   setConfig(ops) {
-    
     if (this._isNode()) {
-      import('node:fs/promises').then((fs) => {
-        fs.writeFile(CONFIG_PATH, `export const logLevelConfig = ${JSON.stringify(ops)};`, 'utf8')
+      import(fsPackage).then((fs) => {
+        fs.writeFile(CONFIG_PATH, `export const logLevelConfig = ${JSON.stringify({...logLevelConfig, ...ops})};`, 'utf8')
       })
         .catch((error) => {
-          console.error("Failed to import fs module:", error);
+          this._fsErr(error);
         });
-
     }
   }
 
   _addConfig(key, val, js) {
-    global.apiConfig[key] = val
     if (this._isInWindow()) {
       window.sessionStorage.setItem(key, val)
     }
 
     if (this._isNode()) {
-      import('node:fs/promises').then((fs) => {
+      import(fsPackage).then((fs) => {
         fs.writeFile(CONFIG_PATH, `export const logLevelConfig = ${js};`, 'utf8')
       })
         .catch((error) => {
-          console.error("Failed to import fs module:", error);
+          this._fsErr(error);
         });
-
     }
   }
 
@@ -96,16 +95,15 @@ export class LogLevel {
   }
 
   setLevel(level) {
-    this._addConfig('level', level, `{level: '${level}', ${this._str('devHost', logLevelConfig?.devHost)} ${this._str('color', logLevelConfig?.color)}}`)
+    this._addConfig('level', level, `{level: '${level}', logDir: '${logLevelConfig.logDir}', ${this._str('devHost', logLevelConfig?.devHost)} ${this._str('color', logLevelConfig?.color)}}`)
   }
 
   setColor(color) {
-    this._addConfig('color', color, `{level: '${logLevelConfig?.level}', ${this._str('devHost', logLevelConfig?.devHost)} color: '${color}'}`)
+    this._addConfig('color', color, `{level: '${logLevelConfig?.level}', logDir: '${logLevelConfig.logDir}', ${this._str('devHost', logLevelConfig?.devHost)} color: '${color}'}`)
   }
 
-
   setDevHost(devHost) {
-    this._addConfig('devHost', devHost, `{level: '${logLevelConfig?.level}', devHost: '${devHost}', ${this._str('color', logLevelConfig?.color)}}`)
+    this._addConfig('devHost', devHost, `{level: '${logLevelConfig?.level}', logDir: '${logLevelConfig.logDir}', devHost: '${devHost}', ${this._str('color', logLevelConfig?.color)}}`)
   }
 
   _isLocal() {
@@ -115,50 +113,58 @@ export class LogLevel {
     return (location.host.indexOf('localhost') !== -1) || (location.host.indexOf('.dev') !== -1)
   }
 
-  _console(msg, fn = 'log') {
+  _console(fn = 'log', ...msg) {
     if (this.getColor()) {
       console[fn](`%c ${msg}`, `color: ${this.getColor()}`)
     } else {
-      console[fn](msg)
+      console[fn](...msg)
+    }
+
+    if (this.getLogDirectory() && this._isNode()) {
+      const date = new Date()
+      const logFileName = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}-xac-loglevel.log`
+      import(fsPackage).then((fs) => {
+        fs.appendFile(this.getLogDirectory() + logFileName, `${date.toLocaleDateString()} > ${fn} > ${msg}`, 'utf8')
+      })
+        .catch((error) => {
+          this._fsErr(error);
+        });
     }
   }
 
-  _out(msg, level, fn = 'log') {
+  _out(level, fn, ...msg) {
     if (levels[this.getLevel()] >= levels[level]) {
-      this._console(msg, fn)
-
+      this._console(fn, ...msg)
     }
   }
 
-  trace(msg) {
-    this._out(msg, 'trace', 'trace')
+  trace(...msg) {
+    this._out('trace', 'trace', ...msg)
   }
 
-  debug(msg) {
-    this._out(msg, 'debug')
+  debug(...msg) {
+    this._out('debug', 'log', ...msg)
   }
 
-  error(msg) {
-    this._out(msg, 'error', 'error')
+  error(...msg) {
+    this._out('error', 'error', ...msg)
   }
 
-  warn(msg) {
-    this._out(msg, 'warn', 'warn')
+  warn(...msg) {
+    this._out('warn', 'warn', ...msg)
   }
 
-  info(msg) {
-    this._out(msg, 'info')
+  info(...msg) {
+    this._out('info', 'info', ...msg)
   }
 
-  dev(msg, fn = 'log') {
+  dev(fn = 'log', ...msg) {
     if (this._isLocal()) {
-      this._console(msg, fn)
+      this._console(fn, ...msg)
     }
   }
 }
 
 const log = new LogLevel()
-
-global.apiConfig = { level: defaultLevel };
 
 export default log 
