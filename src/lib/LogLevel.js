@@ -1,5 +1,5 @@
 import path from 'path'
-import { logLevelConfig } from './config'
+import { logLevelConfig } from './config.js'
 
 const defaultLevel = 'warn'
 
