@@ -22,4 +22,4 @@ log.error(msg)
 log.setConfig({level: 'debug', devHost: 'dev.staging.test', color: '#ff0000', logDir: '/path_to_output_logs/})
 ```
 
-With `devHost` option, you can then call `log.dev(msg)` and this will log whenever the client host matches. Default is `localhost` or `.dev`.
+With `devHost` option, you can then call `log.dev.error(msg)` and this will log whenever the client host matches. Default is `localhost` or `.dev`.

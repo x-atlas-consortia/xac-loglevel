@@ -172,10 +172,13 @@ const log =  {
    * @returns bool
    */
   _isLocal: () => {
-    if (logLevelConfig.devHost) {
-      return (location.host.indexOf(logLevelConfig.devHost) !== -1)
+    if (log._isInWindow()) {
+      if (logLevelConfig.devHost) {
+        return (location?.host?.indexOf(logLevelConfig.devHost) !== -1)
+      }
+      return (location?.host?.indexOf('localhost') !== -1) || (location?.host?.indexOf('.dev') !== -1)
     }
-    return (location.host.indexOf('localhost') !== -1) || (location.host.indexOf('.dev') !== -1)
+    return null
   },
 
   /**
@@ -256,12 +259,33 @@ const log =  {
 
   /**
    * Print based on user location.host
-   * @param {*} fn 
    * @param  {...any} msg 
    */
-  dev: (fn = 'log', ...msg) => {
-    if (log._isLocal()) {
-      log._console(fn, ...msg)
+  dev: {
+    info: (...msg) => {
+      if (log._isLocal()) {
+        log._console('info', ...msg)
+      }
+    },
+    warn: (...msg) => {
+      if (log._isLocal()) {
+        log._console('warn', ...msg)
+      }
+    },
+    log: (...msg) => {
+      if (log._isLocal()) {
+        log._console('log', ...msg)
+      }
+    },
+    error: (...msg) => {
+      if (log._isLocal()) {
+        log._console('error', ...msg)
+      }
+    },
+    trace: (...msg) => {
+      if (log._isLocal()) {
+        log._console('trace', ...msg)
+      }
     }
   },
 }
