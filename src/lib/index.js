@@ -104,6 +104,7 @@ const log =  {
   setConfig: (ops) => {
     if (log._isNode()) {
       import(fsPackage).then((fs) => {
+        console.log('xac-loglevel: Setting configuration at path', CONFIG_PATH, ops);
         fs.writeFile(CONFIG_PATH, `${JSON.stringify({...logLevelConfig, ...ops})}`, 'utf8')
       })
         .catch((error) => {
