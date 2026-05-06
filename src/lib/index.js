@@ -1,8 +1,8 @@
 import path from 'path'
-import { logLevelConfig } from './config.js'
+import logLevelConfig from "./config.json" with { type: "json" };
 const fsPackage = 'node:fs/promises'
 
-const CONFIG_PATH = path.join(process.cwd(), 'node_modules/xac-loglevel/dist/config.js')
+const CONFIG_PATH = path.join(process.cwd(), 'node_modules/xac-loglevel/dist/config.json')
 
 const levels = {
   trace: 6,
@@ -104,7 +104,7 @@ const log =  {
   setConfig: (ops) => {
     if (log._isNode()) {
       import(fsPackage).then((fs) => {
-        fs.writeFile(CONFIG_PATH, `export const logLevelConfig = ${JSON.stringify({...logLevelConfig, ...ops})};`, 'utf8')
+        fs.writeFile(CONFIG_PATH, `${JSON.stringify({...logLevelConfig, ...ops})}`, 'utf8')
       })
         .catch((error) => {
           log._fsErr(error);
@@ -125,7 +125,7 @@ const log =  {
 
     if (log._isNode()) {
       import(fsPackage).then((fs) => {
-        fs.writeFile(CONFIG_PATH, `export const logLevelConfig = ${js};`, 'utf8')
+        fs.writeFile(CONFIG_PATH, `${JSON.stringify(js)}`, "utf8");
       })
         .catch((error) => {
           log._fsErr(error);
@@ -148,7 +148,7 @@ const log =  {
    * @param {string} level 
    */
   setLevel: (level) => {
-    log._addConfig('level', level, `{level: '${level}', ${log._str('logDir', logLevelConfig?.logDir)} ${log._str('devHost', logLevelConfig?.devHost)} ${log._str('color', logLevelConfig?.color)}}`)
+    log._addConfig('level', level, {...logLevelConfig, level})
   },
 
   /**
@@ -156,7 +156,7 @@ const log =  {
    * @param {string} color 
    */
   setColor: (color) => {
-    log._addConfig('color', color, `{level: '${logLevelConfig?.level}', ${log._str('logDir', logLevelConfig?.logDir)} ${log._str('devHost', logLevelConfig?.devHost)} color: '${color}'}`)
+    log._addConfig("color", color, { ...logLevelConfig, color });
   },
 
   /**
@@ -164,7 +164,7 @@ const log =  {
    * @param {string} devHost 
    */
   setDevHost: (devHost) => {
-    log._addConfig('devHost', devHost, `{level: '${logLevelConfig?.level}', ${log._str('logDir', logLevelConfig?.logDir)} devHost: '${devHost}', ${log._str('color', logLevelConfig?.color)}}`)
+    log._addConfig("devHost", devHost, { ...logLevelConfig, devHost });
   },
 
   /**

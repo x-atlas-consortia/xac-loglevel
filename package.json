@@ -1,6 +1,6 @@
 {
   "name": "xac-loglevel",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Minimal lightweight simple logging for JavaScript (browsers, node.js or elsewhere). ",
   "homepage": "https://github.com/x-atlas-consortia/xac-loglevel",
   "repository": {
@@ -28,7 +28,7 @@
   ],
   "scripts": {
     "dev": "next dev",
-    "dist": "rm -rf dist && cp src/lib/config.example.js src/lib/config.js &&  NODE_ENV=production node ./node_modules/xac-esbuild/index.js -s=src/lib/ -o=dist/ -banner=package.json -log=1  -t='**/*.{js,jsx,eot,css,svg,woff,woff2,ttf,otf}'",
+    "dist": "rm -rf dist && cp src/lib/config.example.json src/lib/config.json &&  NODE_ENV=production node ./node_modules/xac-esbuild/index.js -s=src/lib/ -o=dist/ -banner=package.json -log=1 -loader='{\".json\": \"copy\", \".js\": \"jsx\"}'  -t='**/*.{js,json}'",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
