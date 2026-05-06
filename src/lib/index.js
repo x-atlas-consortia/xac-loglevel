@@ -2,7 +2,9 @@ import path from 'path'
 import logLevelConfig from "./config.json" with { type: "json" };
 const fsPackage = 'node:fs/promises'
 
-const CONFIG_PATH = path.join(process.cwd(), 'node_modules/xac-loglevel/dist/config.json')
+//const CONFIG_PATH = path.join(process.cwd(), 'node_modules/xac-loglevel/dist/config.json')
+const CONFIG_PATH = process.cwd() + path.join(__dirname, "config.json").replace('ROOT/', '');
+// console.log(CONFIG_PATH);
 
 const levels = {
   trace: 6,
