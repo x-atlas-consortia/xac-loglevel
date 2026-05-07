@@ -1,44 +1,24 @@
 import path from "path";
-import logLevelConfig from "./xac-loglevel-config.json" with { type: "json" };
 const fsPackage = "node:fs/promises";
-
-import { fileURLToPath } from "node:url";
 const fileName = "xac-loglevel-config.json";
+import _logLevelConfig from "./xac-loglevel-config.json" with { type: "json" };
 
-function resolvePath(log = false) {
+async function ensureDir(filePath, initialContent, debug = false) {
   try {
-    let CONFIG_PATH;
-    if (fileURLToPath) {
-      const __filename = fileURLToPath(import.meta.url);
-      const __dirname = path.dirname(__filename);
-      CONFIG_PATH = path.join(__dirname, fileName);
-      const result = { CONFIG_PATH, fileName };
-      if (log) {
-        console.log("xac-loglevel.fileURLToPath", log, result);
-      }
-      return result;
-    } else {
-      let _path = path.join(__dirname, fileName);
-      const virtualRoot = "/ROOT";
-      _path =
-        _path.indexOf(virtualRoot) !== -1
-          ? _path.replaceAll(virtualRoot, "")
-          : _path;
-
-      CONFIG_PATH = path.join(process.cwd(), _path);
-      const result = { CONFIG_PATH, fileName };
-      if (log) {
-        console.log("xac-loglevel/root", log, result);
-      }
-      return result;
+    const fs = await import(fsPackage);
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    if (debug) {
+      console.log("xac-loglevel.ensureDir: Directory ready", filePath);
     }
-  } catch (e) {
-    console.error("xac-loglevel: Could not resolve path.", e);
+    //await fs.writeFile(filePath, initialContent, { flag: "wx" });
+  } catch (err) {
+    if (debug) {
+      console.error("xac-loglevel.ensureDir.catch:", err);
+    }
   }
-  return null;
 }
 
-const CONFIG_PATH = resolvePath().CONFIG_PATH;
+let logLevelConfig = _logLevelConfig || { level: "warn" };
 
 const levels = {
   trace: 6,
@@ -50,20 +30,19 @@ const levels = {
 };
 
 const log = {
-  getConfigPath: (debug = false) => {
-    return resolvePath(debug).CONFIG_PATH || CONFIG_PATH;
+  getConfigPath: (debug) => {
+    const CONFIG_PATH = path.join(
+      process.cwd(),
+      `node_modules/xac-loglevel/dist/${fileName}`,
+    );
+    if (log._isNode()) {
+      ensureDir(CONFIG_PATH, JSON.stringify(logLevelConfig), debug);
+    }
+    return CONFIG_PATH;
   },
-  init: () => {
+  initLogDirectory: (debug = false) => {
     if (log.getLogDirectory() && log._isNode()) {
-      import(fsPackage)
-        .then((fs) => {
-          fs.mkdir(path.dirname(log.getLogDirectory() + "t.log"), {
-            recursive: true,
-          });
-        })
-        .catch((error) => {
-          log._fsErr(error);
-        });
+      setupDirectory(log.getLogDirectory() + "t.log", "", debug);
     }
   },
 
@@ -92,14 +71,22 @@ const log = {
    * @param {*} key
    * @returns string || undefined
    */
-  _getConfig: (key) => {
+  _getConfig: async (key) => {
     if (log._isInWindow()) {
       return window.sessionStorage.getItem(key) || logLevelConfig[key];
     }
 
     if (log._isNode()) {
-      return logLevelConfig[key];
+      try {
+        const fs = await import(fsPackage);
+        const data = await fs.readFile(log.getConfigPath(), "utf8");
+        logLevelConfig = JSON.parse(data);
+        return logLevelConfig[key];
+      } catch (e) {
+        console.error("xac-loglevel: ", e);
+      }
     }
+    return null;
   },
 
   /**
@@ -122,8 +109,8 @@ const log = {
    * Get hex color string
    * @returns string || undefined
    */
-  getColor: () => {
-    return log._getConfig("color");
+  getColor: async () => {
+    return await log._getConfig("color");
   },
 
   /**
@@ -155,9 +142,10 @@ const log = {
             log.getConfigPath(),
             ops,
           );
+          logLevelConfig = { ...logLevelConfig, ...ops };
           fs.writeFile(
             log.getConfigPath(),
-            `${JSON.stringify({ ...logLevelConfig, ...ops })}`,
+            `${JSON.stringify(logLevelConfig)}`,
             "utf8",
           );
         })
@@ -178,15 +166,7 @@ const log = {
       window.sessionStorage.setItem(key, val);
     }
 
-    if (log._isNode()) {
-      import(fsPackage)
-        .then((fs) => {
-          fs.writeFile(log.getConfigPath(), `${JSON.stringify(js)}`, "utf8");
-        })
-        .catch((error) => {
-          log._fsErr(error);
-        });
-    }
+    log.setConfig(js);
   },
 
   /**
@@ -204,7 +184,7 @@ const log = {
    * @param {string} level
    */
   setLevel: (level) => {
-    log._addConfig("level", level, { ...logLevelConfig, level });
+    log._addConfig("level", level, { level });
   },
 
   /**
@@ -212,7 +192,7 @@ const log = {
    * @param {string} color
    */
   setColor: (color) => {
-    log._addConfig("color", color, { ...logLevelConfig, color });
+    log._addConfig("color", color, { color });
   },
 
   /**
@@ -220,7 +200,7 @@ const log = {
    * @param {string} devHost
    */
   setDevHost: (devHost) => {
-    log._addConfig("devHost", devHost, { ...logLevelConfig, devHost });
+    log._addConfig("devHost", devHost, { devHost });
   },
 
   /**
@@ -228,16 +208,17 @@ const log = {
    * @returns bool
    */
   _isLocal: () => {
-    if (log._isInWindow()) {
-      if (logLevelConfig.devHost) {
-        return location?.host?.indexOf(logLevelConfig.devHost) !== -1;
-      }
-      return (
-        location?.host?.indexOf("localhost") !== -1 ||
-        location?.host?.indexOf(".dev") !== -1
-      );
-    }
-    return null;
+    return Promise.resolve(log.getDevHost())
+      .then((_devHost) => {
+        if (_devHost) {
+          return location?.host?.indexOf(_devHost) !== -1;
+        }
+        return (
+          location?.host?.indexOf("localhost") !== -1 ||
+          location?.host?.indexOf(".dev") !== -1
+        );
+      })
+      .catch((err) => console.error(err));
   },
 
   /**
@@ -246,27 +227,31 @@ const log = {
    * @param  {...any} msg
    */
   _console: (fn = "log", ...msg) => {
-    if (log.getColor()) {
-      console[fn](`%c ${msg}`, `color: ${log.getColor()}`);
-    } else {
-      console[fn](...msg);
-    }
+    Promise.resolve(log.getColor()).then((_color) => {
+      if (_color) {
+        console[fn](`%c ${msg}`, `color: ${_color}`);
+      } else {
+        console[fn](...msg);
+      }
+    });
 
-    if (log.getLogDirectory() && log._isNode()) {
-      const date = new Date();
-      const logFileName = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}-xac-loglevel.log`;
-      import(fsPackage)
-        .then((fs) => {
-          fs.appendFile(
-            log.getLogDirectory() + logFileName,
-            `${date.toLocaleDateString()} > ${fn} > ${msg}`,
-            "utf8",
-          );
-        })
-        .catch((error) => {
-          log._fsErr(error);
-        });
-    }
+    Promise.resolve(log.getLogDirectory()).then((_dir) => {
+      if (_dir && log._isNode()) {
+        const date = new Date();
+        const logFileName = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}-xac-loglevel.log`;
+        import(fsPackage)
+          .then((fs) => {
+            fs.appendFile(
+              _dir + logFileName,
+              `${date.toLocaleDateString()} > ${fn} > ${msg}`,
+              "utf8",
+            );
+          })
+          .catch((error) => {
+            log._fsErr(error);
+          });
+      }
+    });
   },
 
   /**
@@ -276,9 +261,11 @@ const log = {
    * @param  {...any} msg
    */
   checkLevel: (level, fn, ...msg) => {
-    if (levels[log.getLevel()] >= levels[level]) {
-      log._console(fn, ...msg);
-    }
+    Promise.resolve(log.getLevel()).then((_level) => {
+      if (levels[_level] >= levels[level]) {
+        log._console(fn, ...msg);
+      }
+    });
   },
 
   /**
@@ -321,35 +308,35 @@ const log = {
     log.checkLevel("info", "info", ...msg);
   },
 
+  _localCheck: (fn, ...msg) => {
+    if (log._isInWindow()) {
+      Promise.resolve(log._isLocal()).then((_isLocal) => {
+        if (_isLocal) {
+          log._console(fn, ...msg);
+        }
+      });
+    }
+  },
+
   /**
    * Print based on user location.host
    * @param  {...any} msg
    */
   dev: {
     info: (...msg) => {
-      if (log._isLocal()) {
-        log._console("info", ...msg);
-      }
+      log._localCheck("info", ...msg);
     },
     warn: (...msg) => {
-      if (log._isLocal()) {
-        log._console("warn", ...msg);
-      }
+      log._localCheck("warn", ...msg);
     },
     log: (...msg) => {
-      if (log._isLocal()) {
-        log._console("log", ...msg);
-      }
+      log._localCheck("log", ...msg);
     },
     error: (...msg) => {
-      if (log._isLocal()) {
-        log._console("error", ...msg);
-      }
+      log._localCheck("error", ...msg);
     },
     trace: (...msg) => {
-      if (log._isLocal()) {
-        log._console("trace", ...msg);
-      }
+      log._localCheck("trace", ...msg);
     },
   },
 };
