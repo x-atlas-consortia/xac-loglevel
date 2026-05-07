@@ -12,33 +12,33 @@ function resolvePath(log = false) {
       const __filename = fileURLToPath(import.meta.url);
       const __dirname = path.dirname(__filename);
       CONFIG_PATH = path.join(__dirname, fileName);
-      const result = { __dirname, __filename, CONFIG_PATH, fileName };
+      const result = { CONFIG_PATH, fileName };
       if (log) {
-        console.log("xac-loglevel.fileURLToPath", result);
+        console.log("xac-loglevel.fileURLToPath", log, result);
       }
       return result;
     } else {
       let _path = path.join(__dirname, fileName);
       const virtualRoot = "/ROOT";
-      _path = _path.startsWith(virtualRoot)
-        ? _path.replace(virtualRoot, "")
-        : _path;
+      _path =
+        _path.indexOf(virtualRoot) !== -1
+          ? _path.replaceAll(virtualRoot, "")
+          : _path;
+
       CONFIG_PATH = path.join(process.cwd(), _path);
-      const result = { __dirname, __filename, CONFIG_PATH, fileName };
+      const result = { CONFIG_PATH, fileName };
       if (log) {
-        console.log("xac-loglevel", result);
+        console.log("xac-loglevel/root", log, result);
       }
       return result;
     }
-    
   } catch (e) {
     console.error("xac-loglevel: Could not resolve path.", e);
   }
-  return null
+  return null;
 }
 
-const CONFIG_PATH = resolvePath()
-
+const CONFIG_PATH = resolvePath().CONFIG_PATH;
 
 const levels = {
   trace: 6,
@@ -50,7 +50,6 @@ const levels = {
 };
 
 const log = {
-
   getConfigPath: (debug = false) => {
     return resolvePath(debug).CONFIG_PATH || CONFIG_PATH;
   },
