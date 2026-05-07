@@ -38,7 +38,7 @@ const log = {
     if (log._isNode()) {
       ensureDir(CONFIG_PATH, JSON.stringify(logLevelConfig), debug);
     }
-    return CONFIG_PATH;
+    return global && global.logLevel ? global.logLevel?.path : CONFIG_PATH;
   },
   initLogDirectory: (debug = false) => {
     if (log.getLogDirectory() && log._isNode()) {
@@ -58,12 +58,27 @@ const log = {
     );
   },
 
+  _setPath: (_path) => {
+    global.logLevel = {path: _path}
+  },
+
+  _getGlobal: () => {
+    return global.logLevel
+  },
+
   /**
    * Checks if running in the browser
    * @returns bool
    */
   _isInWindow: () => {
     return typeof window !== "undefined" && window.sessionStorage;
+  },
+
+  initConfig: async (_path) => {
+    const p = _path || log.getConfigPath()
+    const fs = await import(fsPackage);
+    const data = await fs.readFile(p, "utf8");
+    logLevelConfig = JSON.parse(data);
   },
 
   /**
@@ -78,9 +93,7 @@ const log = {
 
     if (log._isNode()) {
       try {
-        const fs = await import(fsPackage);
-        const data = await fs.readFile(log.getConfigPath(), "utf8");
-        logLevelConfig = JSON.parse(data);
+        await log.initConfig();
         return logLevelConfig[key];
       } catch (e) {
         console.error("xac-loglevel: ", e);
@@ -134,6 +147,7 @@ const log = {
    * @param {object} ops {level, logDir, color, devHost}
    */
   setConfig: (ops) => {
+    logLevelConfig = { ...logLevelConfig, ...ops };
     if (log._isNode()) {
       import(fsPackage)
         .then((fs) => {
@@ -142,7 +156,6 @@ const log = {
             log.getConfigPath(),
             ops,
           );
-          logLevelConfig = { ...logLevelConfig, ...ops };
           fs.writeFile(
             log.getConfigPath(),
             `${JSON.stringify(logLevelConfig)}`,

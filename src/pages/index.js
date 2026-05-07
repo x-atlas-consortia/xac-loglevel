@@ -5,6 +5,7 @@ export default function Home() {
   log.setConfig({ color: "green", level: "trace" });
   log.error(log.getLevel(), "hi2");
   log.dev.error("Error dev");
+  log._setPath('/etsdp/ath.com')
   console.log(log.getConfigPath(true));
   useEffect(() => {
     // log.setLevel('trace')
