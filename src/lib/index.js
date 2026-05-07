@@ -1,10 +1,22 @@
-import path from 'path'
-import logLevelConfig from "./config.json" with { type: "json" };
-const fsPackage = 'node:fs/promises'
+import path from "path";
+import logLevelConfig from "./xac-loglevel-config.json" with { type: "json" };
+const fsPackage = "node:fs/promises";
 
-//const CONFIG_PATH = path.join(process.cwd(), 'node_modules/xac-loglevel/dist/config.json')
-const CONFIG_PATH = process.cwd() + path.join(__dirname, "config.json").replace('ROOT/', '');
-// console.log(CONFIG_PATH);
+import { fileURLToPath } from "node:url";
+const fileName = "xac-loglevel-config.json";
+let CONFIG_PATH;
+if (fileURLToPath) {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  CONFIG_PATH = path.join(__dirname, fileName);
+} else {
+  let _path = path.join(__dirname, fileName);
+  const virtualRoot = "/ROOT";
+  _path = _path.startsWith(virtualRoot)
+    ? _path.replace(virtualRoot, "")
+    : _path;
+  CONFIG_PATH = path.join(process.cwd(), _path);
+}
 
 const levels = {
   trace: 6,
@@ -12,18 +24,20 @@ const levels = {
   info: 4,
   warn: 3,
   error: 2,
-  dev: 1
-}
+  dev: 1,
+};
 
-const log =  {
-  
+const log = {
   init: () => {
     if (log.getLogDirectory() && log._isNode()) {
-      import(fsPackage).then((fs) => {
-        fs.mkdir(path.dirname(log.getLogDirectory() + 't.log'), { recursive: true })
-      })
+      import(fsPackage)
+        .then((fs) => {
+          fs.mkdir(path.dirname(log.getLogDirectory() + "t.log"), {
+            recursive: true,
+          });
+        })
         .catch((error) => {
-         log._fsErr(error);
+          log._fsErr(error);
         });
     }
   },
@@ -33,7 +47,11 @@ const log =  {
    * @returns bool
    */
   _isNode: () => {
-    return typeof process !== 'undefined' && !!process.versions && !!process.versions.node;
+    return (
+      typeof process !== "undefined" &&
+      !!process.versions &&
+      !!process.versions.node
+    );
   },
 
   /**
@@ -41,21 +59,21 @@ const log =  {
    * @returns bool
    */
   _isInWindow: () => {
-    return typeof window !== 'undefined' && window.sessionStorage
+    return typeof window !== "undefined" && window.sessionStorage;
   },
 
   /**
    * Returns a configuration option
-   * @param {*} key 
+   * @param {*} key
    * @returns string || undefined
    */
   _getConfig: (key) => {
     if (log._isInWindow()) {
-      return window.sessionStorage.getItem(key) || logLevelConfig[key]
+      return window.sessionStorage.getItem(key) || logLevelConfig[key];
     }
 
     if (log._isNode()) {
-      return logLevelConfig[key]
+      return logLevelConfig[key];
     }
   },
 
@@ -64,7 +82,7 @@ const log =  {
    * @returns string
    */
   getLevel: () => {
-    return log._getConfig('level')
+    return log._getConfig("level");
   },
 
   /**
@@ -72,7 +90,7 @@ const log =  {
    * @returns string || undefined
    */
   getDevHost: () => {
-    return log._getConfig('devHost')
+    return log._getConfig("devHost");
   },
 
   /**
@@ -80,7 +98,7 @@ const log =  {
    * @returns string || undefined
    */
   getColor: () => {
-    return log._getConfig('color')
+    return log._getConfig("color");
   },
 
   /**
@@ -88,27 +106,36 @@ const log =  {
    * @returns string || undefined
    */
   getLogDirectory: () => {
-    return log._getConfig('logDir')
+    return log._getConfig("logDir");
   },
 
   /**
    * Prints import error
-   * @param {*} error 
+   * @param {*} error
    */
   _fsErr: (error) => {
     console.error("xac-loglevel: Failed to import fs module:", error);
   },
- 
+
   /**
    * Set multiple configuration options
    * @param {object} ops {level, logDir, color, devHost}
    */
   setConfig: (ops) => {
     if (log._isNode()) {
-      import(fsPackage).then((fs) => {
-        console.log('xac-loglevel: Setting configuration at path', CONFIG_PATH, ops);
-        fs.writeFile(CONFIG_PATH, `${JSON.stringify({...logLevelConfig, ...ops})}`, 'utf8')
-      })
+      import(fsPackage)
+        .then((fs) => {
+          console.log(
+            "xac-loglevel: Setting configuration at path",
+            CONFIG_PATH,
+            ops,
+          );
+          fs.writeFile(
+            CONFIG_PATH,
+            `${JSON.stringify({ ...logLevelConfig, ...ops })}`,
+            "utf8",
+          );
+        })
         .catch((error) => {
           log._fsErr(error);
         });
@@ -117,19 +144,20 @@ const log =  {
 
   /**
    * Sets a single config option
-   * @param {string} key 
-   * @param {string} val 
-   * @param {string} js 
+   * @param {string} key
+   * @param {string} val
+   * @param {string} js
    */
   _addConfig: (key, val, js) => {
     if (log._isInWindow()) {
-      window.sessionStorage.setItem(key, val)
+      window.sessionStorage.setItem(key, val);
     }
 
     if (log._isNode()) {
-      import(fsPackage).then((fs) => {
-        fs.writeFile(CONFIG_PATH, `${JSON.stringify(js)}`, "utf8");
-      })
+      import(fsPackage)
+        .then((fs) => {
+          fs.writeFile(CONFIG_PATH, `${JSON.stringify(js)}`, "utf8");
+        })
         .catch((error) => {
           log._fsErr(error);
         });
@@ -138,25 +166,25 @@ const log =  {
 
   /**
    * Sets a key: val
-   * @param {string} key 
-   * @param {string} val 
-   * @returns 
+   * @param {string} key
+   * @param {string} val
+   * @returns
    */
   _str: (key, val) => {
-    return val ? `${key}: '${val}',` : '' 
+    return val ? `${key}: '${val}',` : "";
   },
 
   /**
    * Set the loglevel
-   * @param {string} level 
+   * @param {string} level
    */
   setLevel: (level) => {
-    log._addConfig('level', level, {...logLevelConfig, level})
+    log._addConfig("level", level, { ...logLevelConfig, level });
   },
 
   /**
    * Set a color for terminal text
-   * @param {string} color 
+   * @param {string} color
    */
   setColor: (color) => {
     log._addConfig("color", color, { ...logLevelConfig, color });
@@ -164,7 +192,7 @@ const log =  {
 
   /**
    * Set a development hostname for logging only under a particular hostname
-   * @param {string} devHost 
+   * @param {string} devHost
    */
   setDevHost: (devHost) => {
     log._addConfig("devHost", devHost, { ...logLevelConfig, devHost });
@@ -177,31 +205,39 @@ const log =  {
   _isLocal: () => {
     if (log._isInWindow()) {
       if (logLevelConfig.devHost) {
-        return (location?.host?.indexOf(logLevelConfig.devHost) !== -1)
+        return location?.host?.indexOf(logLevelConfig.devHost) !== -1;
       }
-      return (location?.host?.indexOf('localhost') !== -1) || (location?.host?.indexOf('.dev') !== -1)
+      return (
+        location?.host?.indexOf("localhost") !== -1 ||
+        location?.host?.indexOf(".dev") !== -1
+      );
     }
-    return null
+    return null;
   },
 
   /**
    * Output to the console
-   * @param {string} fn 
-   * @param  {...any} msg 
+   * @param {string} fn
+   * @param  {...any} msg
    */
-  _console: (fn = 'log', ...msg) => {
+  _console: (fn = "log", ...msg) => {
     if (log.getColor()) {
-      console[fn](`%c ${msg}`, `color: ${log.getColor()}`)
+      console[fn](`%c ${msg}`, `color: ${log.getColor()}`);
     } else {
-      console[fn](...msg)
+      console[fn](...msg);
     }
 
     if (log.getLogDirectory() && log._isNode()) {
-      const date = new Date()
-      const logFileName = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}-xac-loglevel.log`
-      import(fsPackage).then((fs) => {
-        fs.appendFile(log.getLogDirectory() + logFileName, `${date.toLocaleDateString()} > ${fn} > ${msg}`, 'utf8')
-      })
+      const date = new Date();
+      const logFileName = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}-xac-loglevel.log`;
+      import(fsPackage)
+        .then((fs) => {
+          fs.appendFile(
+            log.getLogDirectory() + logFileName,
+            `${date.toLocaleDateString()} > ${fn} > ${msg}`,
+            "utf8",
+          );
+        })
         .catch((error) => {
           log._fsErr(error);
         });
@@ -210,46 +246,46 @@ const log =  {
 
   /**
    * Checks level before outting to console
-   * @param {string} level 
-   * @param {string} fn 
-   * @param  {...any} msg 
+   * @param {string} level
+   * @param {string} fn
+   * @param  {...any} msg
    */
   checkLevel: (level, fn, ...msg) => {
     if (levels[log.getLevel()] >= levels[level]) {
-      log._console(fn, ...msg)
+      log._console(fn, ...msg);
     }
   },
 
   /**
    * Print based on console.trace
-   * @param  {...any} msg 
+   * @param  {...any} msg
    */
-  trace: (...msg)  =>{
-    log.checkLevel('trace', 'trace', ...msg)
+  trace: (...msg) => {
+    log.checkLevel("trace", "trace", ...msg);
   },
 
   /**
    * Print based on console.log
-   * @param  {...any} msg 
+   * @param  {...any} msg
    */
   debug: (...msg) => {
-    log.checkLevel('debug', 'log', ...msg)
+    log.checkLevel("debug", "log", ...msg);
   },
 
   /**
    * Print based on console.error
-   * @param  {...any} msg 
+   * @param  {...any} msg
    */
   error: (...msg) => {
-    log.checkLevel('error', 'error', ...msg)
+    log.checkLevel("error", "error", ...msg);
   },
 
   /**
    * Print based on console.warn
-   * @param  {...any} msg 
+   * @param  {...any} msg
    */
   warn: (...msg) => {
-    log.checkLevel('warn', 'warn', ...msg)
+    log.checkLevel("warn", "warn", ...msg);
   },
 
   /**
@@ -257,40 +293,40 @@ const log =  {
    * @param  {...any} msg
    */
   info: (...msg) => {
-    log.checkLevel('info', 'info', ...msg)
+    log.checkLevel("info", "info", ...msg);
   },
 
   /**
    * Print based on user location.host
-   * @param  {...any} msg 
+   * @param  {...any} msg
    */
   dev: {
     info: (...msg) => {
       if (log._isLocal()) {
-        log._console('info', ...msg)
+        log._console("info", ...msg);
       }
     },
     warn: (...msg) => {
       if (log._isLocal()) {
-        log._console('warn', ...msg)
+        log._console("warn", ...msg);
       }
     },
     log: (...msg) => {
       if (log._isLocal()) {
-        log._console('log', ...msg)
+        log._console("log", ...msg);
       }
     },
     error: (...msg) => {
       if (log._isLocal()) {
-        log._console('error', ...msg)
+        log._console("error", ...msg);
       }
     },
     trace: (...msg) => {
       if (log._isLocal()) {
-        log._console('trace', ...msg)
+        log._console("trace", ...msg);
       }
-    }
+    },
   },
-}
+};
 
-export default log 
+export default log;

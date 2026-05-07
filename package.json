@@ -28,7 +28,7 @@
   ],
   "scripts": {
     "dev": "next dev",
-    "dist": "rm -rf dist && cp src/lib/config.example.json src/lib/config.json &&  NODE_ENV=production node ./node_modules/xac-esbuild/index.js -s=src/lib/ -o=dist/ -banner=package.json -log=1 -loader='{\".json\": \"copy\", \".js\": \"jsx\"}'  -t='**/*.{js,json}'",
+    "dist": "rm -rf dist && cp src/lib/xac-loglevel-config.example.json src/lib/xac-loglevel-config.json &&  NODE_ENV=production node ./node_modules/xac-esbuild/index.js -s=src/lib/ -o=dist/ -banner=package.json -log=1 -loader='{\".json\": \"copy\", \".js\": \"jsx\"}'  -t='**/*.{js,json}'",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
