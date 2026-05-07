@@ -4,19 +4,41 @@ const fsPackage = "node:fs/promises";
 
 import { fileURLToPath } from "node:url";
 const fileName = "xac-loglevel-config.json";
-let CONFIG_PATH;
-if (fileURLToPath) {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  CONFIG_PATH = path.join(__dirname, fileName);
-} else {
-  let _path = path.join(__dirname, fileName);
-  const virtualRoot = "/ROOT";
-  _path = _path.startsWith(virtualRoot)
-    ? _path.replace(virtualRoot, "")
-    : _path;
-  CONFIG_PATH = path.join(process.cwd(), _path);
+
+function resolvePath(log = false) {
+  try {
+    let CONFIG_PATH;
+    if (fileURLToPath) {
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = path.dirname(__filename);
+      CONFIG_PATH = path.join(__dirname, fileName);
+      const result = { __dirname, __filename, CONFIG_PATH, fileName };
+      if (log) {
+        console.log("xac-loglevel.fileURLToPath", result);
+      }
+      return result;
+    } else {
+      let _path = path.join(__dirname, fileName);
+      const virtualRoot = "/ROOT";
+      _path = _path.startsWith(virtualRoot)
+        ? _path.replace(virtualRoot, "")
+        : _path;
+      CONFIG_PATH = path.join(process.cwd(), _path);
+      const result = { __dirname, __filename, CONFIG_PATH, fileName };
+      if (log) {
+        console.log("xac-loglevel", result);
+      }
+      return result;
+    }
+    
+  } catch (e) {
+    console.error("xac-loglevel: Could not resolve path.", e);
+  }
+  return null
 }
+
+const CONFIG_PATH = resolvePath()
+
 
 const levels = {
   trace: 6,
@@ -28,6 +50,10 @@ const levels = {
 };
 
 const log = {
+
+  getConfigPath: (debug = false) => {
+    return resolvePath(debug).CONFIG_PATH || CONFIG_PATH;
+  },
   init: () => {
     if (log.getLogDirectory() && log._isNode()) {
       import(fsPackage)
@@ -127,11 +153,11 @@ const log = {
         .then((fs) => {
           console.log(
             "xac-loglevel: Setting configuration at path",
-            CONFIG_PATH,
+            log.getConfigPath(),
             ops,
           );
           fs.writeFile(
-            CONFIG_PATH,
+            log.getConfigPath(),
             `${JSON.stringify({ ...logLevelConfig, ...ops })}`,
             "utf8",
           );
@@ -156,7 +182,7 @@ const log = {
     if (log._isNode()) {
       import(fsPackage)
         .then((fs) => {
-          fs.writeFile(CONFIG_PATH, `${JSON.stringify(js)}`, "utf8");
+          fs.writeFile(log.getConfigPath(), `${JSON.stringify(js)}`, "utf8");
         })
         .catch((error) => {
           log._fsErr(error);
