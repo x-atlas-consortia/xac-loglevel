@@ -17,9 +17,11 @@ async function ensureDir(filePath, initialContent, debug = false) {
     if (debug) {
       console.log("xac-loglevel.ensureDir: Directory ready", filePath);
     }
-    await fs
-      .writeFile(filePath, initialContent, { flag: "wx" })
-      .catch((err) => log._err(err));
+    if (initialContent) {
+      await fs
+        .writeFile(filePath, initialContent, { flag: "wx" })
+        .catch((err) => log._err(err));
+    }
 
   } catch (err) {
     if (debug) {
@@ -57,6 +59,16 @@ const log = {
   },
 
   /**
+   * Make sure that directory is created.
+   * @param {string} filePath
+   * @param {string} initialContent
+   * @param {bool} debug  whether or not to print logs
+   */
+  ensureDir: (filePath, initialContent, debug = false) => {
+    ensureDir(filePath, initialContent, debug);
+  },
+
+  /**
    * Set up directory for logging.
    * @param {bool} debug  whether or not to print logs
    */
@@ -64,7 +76,7 @@ const log = {
     Promise.resolve(log.getLogDirectory())
       .then((_dir) => {
         if (_dir && log._isNode()) {
-          setupDirectory(_dir + "t.log", "", debug);
+          ensureDir(_dir + "t.log", null, debug);
         }
       })
       .catch((err) => log._err(err));
@@ -83,7 +95,10 @@ const log = {
   },
 
   setPath: (_path) => {
-    global.logLevel = { path: _path };
+    if (!global.logLevel) {
+      global.logLevel = {};
+    }
+    global.logLevel = { ...global.logLevel, path: _path };
   },
 
   getGlobal: () => {
@@ -149,8 +164,8 @@ const log = {
    * Get hex color string
    * @returns string || undefined
    */
-  getColor: async () => {
-    return await log._getConfig("color");
+  getColor: () => {
+    return log._getConfig("color");
   },
 
   /**
@@ -215,7 +230,7 @@ const log = {
    */
   _addConfig: (key, val, js) => {
     if (log._isInWindow()) {
-      log._sessionConfig(key, val)
+      log._sessionConfig(key, val);
     }
 
     log.setConfig(js);
@@ -369,8 +384,8 @@ const log = {
 
   /**
    * Checks host settings
-   * @param {string} fn 
-   * @param  {...any} msg 
+   * @param {string} fn
+   * @param  {...any} msg
    */
   _localCheck: (fn, ...msg) => {
     if (log._isInWindow()) {
