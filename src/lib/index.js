@@ -53,7 +53,7 @@ const log = {
       `node_modules/xac-loglevel/dist/${fileName}`,
     );
     if (log._isNode()) {
-      ensureDir(CONFIG_PATH, JSON.stringify(logLevelConfig), debug);
+      ensureDir(CONFIG_PATH, null, debug);
     }
     return global && global.logLevel ? global.logLevel?.path : CONFIG_PATH;
   },
