@@ -2,7 +2,14 @@ import path from "path";
 const fsPackage = "node:fs/promises";
 const fileName = "xac-loglevel-config.json";
 import _logLevelConfig from "./xac-loglevel-config.json" with { type: "json" };
+const storageKey = 'xac-loglevel.'
 
+/**
+ * Make sure that directory is created.
+ * @param {string} filePath 
+ * @param {string} initialContent 
+ * @param {bool} debug  whether or not to print logs 
+ */
 async function ensureDir(filePath, initialContent, debug = false) {
   try {
     const fs = await import(fsPackage);
@@ -10,7 +17,10 @@ async function ensureDir(filePath, initialContent, debug = false) {
     if (debug) {
       console.log("xac-loglevel.ensureDir: Directory ready", filePath);
     }
-    //await fs.writeFile(filePath, initialContent, { flag: "wx" });
+    await fs
+      .writeFile(filePath, initialContent, { flag: "wx" })
+      .catch((err) => log._err(err));
+
   } catch (err) {
     if (debug) {
       console.error("xac-loglevel.ensureDir.catch:", err);
@@ -30,6 +40,11 @@ const levels = {
 };
 
 const log = {
+  /**
+   * Returns path of config file
+   * @param {bool} debug whether or not to print logs
+   * @returns
+   */
   getConfigPath: (debug) => {
     const CONFIG_PATH = path.join(
       process.cwd(),
@@ -40,10 +55,19 @@ const log = {
     }
     return global && global.logLevel ? global.logLevel?.path : CONFIG_PATH;
   },
-  initLogDirectory: (debug = false) => {
-    if (log.getLogDirectory() && log._isNode()) {
-      setupDirectory(log.getLogDirectory() + "t.log", "", debug);
-    }
+
+  /**
+   * Set up directory for logging.
+   * @param {bool} debug  whether or not to print logs
+   */
+  initLogDirectory: async (debug = false) => {
+    Promise.resolve(log.getLogDirectory())
+      .then((_dir) => {
+        if (_dir && log._isNode()) {
+          setupDirectory(_dir + "t.log", "", debug);
+        }
+      })
+      .catch((err) => log._err(err));
   },
 
   /**
@@ -58,12 +82,12 @@ const log = {
     );
   },
 
-  _setPath: (_path) => {
-    global.logLevel = {path: _path}
+  setPath: (_path) => {
+    global.logLevel = { path: _path };
   },
 
-  _getGlobal: () => {
-    return global.logLevel
+  getGlobal: () => {
+    return global.logLevel;
   },
 
   /**
@@ -75,7 +99,7 @@ const log = {
   },
 
   initConfig: async (_path) => {
-    const p = _path || log.getConfigPath()
+    const p = _path || log.getConfigPath();
     const fs = await import(fsPackage);
     const data = await fs.readFile(p, "utf8");
     logLevelConfig = JSON.parse(data);
@@ -88,7 +112,10 @@ const log = {
    */
   _getConfig: async (key) => {
     if (log._isInWindow()) {
-      return window.sessionStorage.getItem(key) || logLevelConfig[key];
+      return (
+        window.sessionStorage.getItem(`${storageKey}${key}`) ||
+        logLevelConfig[key]
+      );
     }
 
     if (log._isNode()) {
@@ -143,6 +170,14 @@ const log = {
   },
 
   /**
+   * Prints import error
+   * @param {*} error
+   */
+  _err: (error) => {
+    console.error("xac-loglevel:", error);
+  },
+
+  /**
    * Set multiple configuration options
    * @param {object} ops {level, logDir, color, devHost}
    */
@@ -168,6 +203,10 @@ const log = {
     }
   },
 
+  _sessionConfig: (key, val) => {
+    window.sessionStorage.setItem(`${storageKey}${key}`, val);
+  },
+
   /**
    * Sets a single config option
    * @param {string} key
@@ -176,7 +215,7 @@ const log = {
    */
   _addConfig: (key, val, js) => {
     if (log._isInWindow()) {
-      window.sessionStorage.setItem(key, val);
+      log._sessionConfig(key, val)
     }
 
     log.setConfig(js);
@@ -220,7 +259,7 @@ const log = {
    * Determines if running under developer hostname or default localhost or .dev
    * @returns bool
    */
-  _isLocal: () => {
+  _isLocal: async () => {
     return Promise.resolve(log.getDevHost())
       .then((_devHost) => {
         if (_devHost) {
@@ -231,7 +270,7 @@ const log = {
           location?.host?.indexOf(".dev") !== -1
         );
       })
-      .catch((err) => console.error(err));
+      .catch((err) => log._err(err));
   },
 
   /**
@@ -240,31 +279,36 @@ const log = {
    * @param  {...any} msg
    */
   _console: (fn = "log", ...msg) => {
-    Promise.resolve(log.getColor()).then((_color) => {
-      if (_color) {
-        console[fn](`%c ${msg}`, `color: ${_color}`);
-      } else {
-        console[fn](...msg);
-      }
-    });
+    Promise.resolve(log.getColor())
+      .then((_color) => {
+        if (_color) {
+          console[fn](`%c ${msg}`, `color: ${_color}`);
+        } else {
+          console[fn](...msg);
+        }
+      })
+      .catch((err) => log._err(err));
 
-    Promise.resolve(log.getLogDirectory()).then((_dir) => {
-      if (_dir && log._isNode()) {
-        const date = new Date();
-        const logFileName = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}-xac-loglevel.log`;
-        import(fsPackage)
-          .then((fs) => {
-            fs.appendFile(
-              _dir + logFileName,
-              `${date.toLocaleDateString()} > ${fn} > ${msg}`,
-              "utf8",
-            );
-          })
-          .catch((error) => {
-            log._fsErr(error);
-          });
-      }
-    });
+    // Log to file if setup
+    Promise.resolve(log.getLogDirectory())
+      .then((_dir) => {
+        if (_dir && log._isNode()) {
+          const date = new Date();
+          const logFileName = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}-xac-loglevel.log`;
+          import(fsPackage)
+            .then((fs) => {
+              fs.appendFile(
+                _dir + logFileName,
+                `${date.toLocaleDateString()} > ${fn} > ${msg}`,
+                "utf8",
+              );
+            })
+            .catch((error) => {
+              log._fsErr(error);
+            });
+        }
+      })
+      .catch((err) => log._err(err));
   },
 
   /**
@@ -274,11 +318,13 @@ const log = {
    * @param  {...any} msg
    */
   checkLevel: (level, fn, ...msg) => {
-    Promise.resolve(log.getLevel()).then((_level) => {
-      if (levels[_level] >= levels[level]) {
-        log._console(fn, ...msg);
-      }
-    });
+    Promise.resolve(log.getLevel())
+      .then((_level) => {
+        if (levels[_level] >= levels[level]) {
+          log._console(fn, ...msg);
+        }
+      })
+      .catch((err) => log._err(err));
   },
 
   /**
@@ -321,13 +367,20 @@ const log = {
     log.checkLevel("info", "info", ...msg);
   },
 
+  /**
+   * Checks host settings
+   * @param {string} fn 
+   * @param  {...any} msg 
+   */
   _localCheck: (fn, ...msg) => {
     if (log._isInWindow()) {
-      Promise.resolve(log._isLocal()).then((_isLocal) => {
-        if (_isLocal) {
-          log._console(fn, ...msg);
-        }
-      });
+      Promise.resolve(log._isLocal())
+        .then((_isLocal) => {
+          if (_isLocal) {
+            log._console(fn, ...msg);
+          }
+        })
+        .catch((err) => log._err(err));
     }
   },
 
